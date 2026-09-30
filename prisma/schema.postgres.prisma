@@ -1,0 +1,196 @@
+// CampusOS AI — PostgreSQL Production Schema
+//
+// USE THIS FOR PRODUCTION DEPLOYMENT (Vercel, Railway, Render, AWS RDS, etc.)
+//
+// Quick migration from SQLite → Postgres:
+//   1. cp prisma/schema.prisma prisma/schema.sqlite.prisma  (backup)
+//   2. cp prisma/schema.postgres.prisma prisma/schema.prisma
+//   3. Update DATABASE_URL in your prod env to: postgresql://user:pass@host:5432/dbname
+//   4. Run: npx prisma generate && npx prisma db push
+//
+// The only schema differences from the SQLite version are:
+//   - provider = "postgresql"
+//   - Uses @db.Text for long string fields (recommended for production)
+//   - Uses @db.VarChar(N) for short bounded strings
+//
+// All models are identical to SQLite — no code changes required in src/.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique @db.VarChar(255)
+  name          String   @db.VarChar(80)
+  passwordHash  String   @db.VarChar(80)
+  college       String?  @db.VarChar(120)
+  branch        String?  @db.VarChar(40)
+  year          String?  @db.VarChar(20)
+  skills        String?  @db.Text
+  targetRole    String?  @db.VarChar(80)
+  avatar        String?  @db.VarChar(500)
+  bio           String?  @db.Text
+  isPro         Boolean  @default(false)
+  proExpiresAt  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  resumes             Resume[]
+  interviews          Interview[]
+  savedJobs           SavedJob[]
+  applications        JobApplication[]
+  resumesAnalyzed     Int                @default(0)
+  interviewsTaken     Int                @default(0)
+  jobsApplied         Int                @default(0)
+  sentMessages        ChatMessage[]      @relation("SentMessages")
+  notifications       Notification[]
+  payments            Payment[]
+
+  @@index([email])
+  @@index([isPro])
+}
+
+model Resume {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score        Int
+  atsScore     Int
+  feedbackJson String   @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Interview {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         String   @db.VarChar(80)
+  question     String   @db.Text
+  answer       String   @db.Text
+  score        Int
+  feedbackJson String   @db.Text
+  isVoice      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, isVoice])
+}
+
+model SavedJob {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String   @db.VarChar(80)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+  @@index([userId])
+}
+
+model JobApplication {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String   @db.VarChar(80)
+  appliedAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+  @@index([userId])
+}
+
+model MentorBooking {
+  id          String   @id @default(cuid())
+  userId      String
+  mentorId    String   @db.VarChar(80)
+  scheduledAt DateTime
+  topic       String   @db.VarChar(200)
+  status      String   @default("pending") @db.VarChar(20)
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([userId, scheduledAt])
+  @@index([mentorId])
+}
+
+model HackathonTeam {
+  id            String   @id @default(cuid())
+  hackathonId   String   @db.VarChar(80)
+  leaderId      String   @db.VarChar(80)
+  leaderName    String   @db.VarChar(120)
+  leaderSkills  String   @db.Text
+  hackathonName String   @db.VarChar(200)
+  description   String   @db.Text
+  lookingFor    String   @db.Text
+  memberCount   Int      @default(1)
+  maxSize       Int      @default(4)
+  createdAt     DateTime @default(now())
+
+  @@index([hackathonId])
+}
+
+model Portfolio {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  dataJson  String   @db.Text
+  published Boolean  @default(false)
+  slug      String?  @unique @db.VarChar(80)
+  views     Int      @default(0)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([published])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  studentId String
+  student   User     @relation("SentMessages", fields: [studentId], references: [id], onDelete: Cascade)
+  mentorId  String   @db.VarChar(80)
+  sender    String   @db.VarChar(20)
+  message   String   @db.Text
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([studentId, mentorId, createdAt])
+  @@index([mentorId, read])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   @db.VarChar(40)
+  title     String   @db.VarChar(200)
+  body      String   @db.Text
+  link      String?  @db.VarChar(500)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  razorpayOrderId   String?  @unique @db.VarChar(80)
+  razorpayPaymentId String?  @db.VarChar(80)
+  amount            Int
+  currency          String   @default("INR") @db.VarChar(10)
+  plan              String   @db.VarChar(40)
+  status            String   @db.VarChar(20)
+  createdAt         DateTime @default(now())
+  paidAt            DateTime?
+
+  @@index([userId, status])
+  @@index([razorpayPaymentId])
+}

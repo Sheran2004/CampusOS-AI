@@ -1,0 +1,177 @@
+// CampusOS AI — Real Database Schema
+// Supports SQLite (local dev) and PostgreSQL (production)
+// Switch via DATABASE_URL - just change the `provider` line and rerun `npx prisma db push`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // for production: change to "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  passwordHash  String
+  college       String?
+  branch        String?
+  year          String?
+  skills        String?  // JSON array as string
+  targetRole    String?
+  avatar        String?
+  bio           String?
+  isPro         Boolean  @default(false)
+  proExpiresAt  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  resumes         Resume[]
+  interviews      Interview[]
+  savedJobs       SavedJob[]
+  applications    JobApplication[]
+  resumesAnalyzed Int                @default(0)
+  interviewsTaken Int                @default(0)
+  jobsApplied     Int                @default(0)
+  sentMessages      ChatMessage[] @relation("SentMessages")
+  notifications     Notification[]
+  payments           Payment[]
+}
+
+model Resume {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score        Int
+  atsScore     Int
+  feedbackJson String
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Interview {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String
+  question    String
+  answer      String
+  score       Int
+  feedbackJson String
+  isVoice     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model SavedJob {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+  @@index([userId])
+}
+
+model JobApplication {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String
+  appliedAt DateTime @default(now())
+
+  @@unique([userId, jobId])
+  @@index([userId])
+}
+
+model MentorBooking {
+  id          String   @id @default(cuid())
+  userId      String
+  mentorId    String
+  scheduledAt DateTime
+  topic       String
+  status      String   @default("pending") // pending | confirmed | completed | cancelled
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, scheduledAt])
+}
+
+model HackathonTeam {
+  id            String   @id @default(cuid())
+  hackathonId   String
+  leaderId      String
+  leaderName    String
+  leaderSkills  String
+  hackathonName String
+  description   String
+  lookingFor    String
+  memberCount   Int      @default(1)
+  maxSize       Int      @default(4)
+  createdAt     DateTime @default(now())
+
+  @@index([hackathonId])
+}
+
+model Portfolio {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  dataJson  String
+  published Boolean  @default(false)
+  slug      String?  @unique
+  views     Int      @default(0)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+// =====================================================
+// NEW MODELS - v1.1
+// =====================================================
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  studentId String
+  student   User     @relation("SentMessages", fields: [studentId], references: [id], onDelete: Cascade)
+  mentorId  String   // mentor ID from MENTOR_DATABASE (string, not FK)
+  sender    String   // "student" or "mentor"
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([studentId, mentorId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // mentor_message, job_match, payment, system
+  title     String
+  body      String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read, createdAt])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  razorpayOrderId   String?  @unique
+  razorpayPaymentId String?
+  amount        Int      // in paise (19900 = ₹199)
+  currency      String   @default("INR")
+  plan          String   // "pro_monthly"
+  status        String   // created | paid | failed | refunded
+  createdAt     DateTime @default(now())
+  paidAt        DateTime?
+
+  @@index([userId, status])
+}
