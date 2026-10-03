@@ -115,179 +115,355 @@ function analyzeResumeHeuristic(text: string): ResumeAnalysis {
   const wordCount = text.split(/\s+/).filter(Boolean).length;
   const lineCount = text.split('\n').filter((l) => l.trim().length > 0).length;
 
-  // ---------- SECTION DETECTION ----------
-  const hasContact = /(@|gmail|linkedin|github\.com|phone|\+91|mobile|email\s*[:\-])/i.test(text);
-  const hasSummary = /(summary|objective|profile|about\s*me|professional\s*summary)/i.test(text);
-  const hasEducation = /(education|b\.?\s?tech|m\.?\s?tech|degree|university|college|cgpa|gpa|10th|12th|intermediate)/i.test(text);
-  const hasExperience = /(experience|internship|worked|employment|work\s*experience)/i.test(text);
-  const hasProjects = /(project|projects|built|developed|created|designed|implemented)/i.test(text);
-  const hasSkills = /(^|\n)\s*(skills?|technical\s*skills?|tech\s*stack|technologies|expertise|proficient)/i.test(text);
-  const hasAchievements = /(award|achievement|certificate|certified|won|winner|accomplishment|scholarship|honor)/i.test(text);
-  const hasExtracurriculars = /(volunteer|leadership|president|coordinator|club|hackathon|event|organize|treasurer|secretary)/i.test(text);
+  // ============================================================
+  // SECTION DETECTION (comprehensive)
+  // ============================================================
+  const hasContact =
+    /(@|gmail\.com|linkedin\.com|github\.com|phone|\+91|mobile|email\s*[:\-])/i.test(text);
+  const hasLinks = /(linkedin\.com|github\.com|gitlab\.com|bitbucket\.org|behance\.net|dribbble\.com|leetcode\.com|hackerrank\.com|codeforces\.com)/i.test(text);
+  const hasSummary = /(summary|objective|profile|about\s*me|professional\s*summary|career\s*objective)/i.test(text);
+  const hasEducation =
+    /(education|b\.?\s?tech|m\.?\s?tech|bachelor|master|degree|university|college|cgpa|gpa|10th|12th|intermediate|diploma)/i.test(text);
+  const hasExperience =
+    /(experience|internship|worked|employment|work\s*experience|professional\s*experience)/i.test(text);
+  const hasProjects =
+    /(project|projects|built|developed|created|designed|implemented|github\.com\/)/i.test(text);
+  const hasSkills =
+    /(^|\n)\s*(skills?|technical\s*skills?|tech\s*stack|technologies|expertise|proficient)/i.test(text);
+  const hasAchievements =
+    /(award|achievement|certificate|certified|won|winner|accomplishment|scholarship|honor|honour|ranked|top\s*\d)/i.test(text);
+  const hasExtracurriculars =
+    /(volunteer|leadership|president|coordinator|club|hackathon|event|organize|treasurer|secretary|captain|head\s*of)/i.test(text);
+  const hasCertifications = /(certified|certification|certificate|aws\s*certified|google\s*certified|azure\s*certified)/i.test(text);
+  const hasPortfolio = /(portfolio|github\.com\/|demo\s*link|live\s*link|deployed|vercel\.app|netlify\.app)/i.test(text);
+  const hasLanguages = /(\benglish\b|\bhindi\b|\btamil\b|\bbengali\b|\bmarathi\b|\bspanish\b|\bfrench\b|\bgerman\b)/i.test(text);
 
-  // ---------- SKILL EXTRACTION ----------
-  const skillKeywords = [
-    'javascript', 'typescript', 'python', 'java', 'c++', 'c#', 'go', 'rust', 'kotlin', 'swift',
-    'react', 'next.js', 'nextjs', 'vue', 'angular', 'svelte',
-    'node.js', 'nodejs', 'express', 'django', 'fastapi', 'flask', 'spring boot', 'rails',
-    'mongodb', 'postgresql', 'mysql', 'redis', 'elasticsearch', 'dynamodb',
-    'aws', 'gcp', 'azure', 'docker', 'kubernetes', 'terraform', 'ansible',
-    'machine learning', 'deep learning', 'tensorflow', 'pytorch', 'pandas', 'numpy', 'scikit-learn',
-    'git', 'github', 'ci/cd', 'jenkins', 'linux',
-    'figma', 'tailwind', 'html', 'css', 'sass',
-    'graphql', 'rest api', 'firebase', 'android', 'ios', 'flutter', 'react native',
-    'communication', 'leadership', 'teamwork', 'problem solving',
+  // ============================================================
+  // SKILL EXTRACTION (categorized for better role matching)
+  // ============================================================
+  const SKILL_CATEGORIES = {
+    languages: [
+      'javascript', 'typescript', 'python', 'java', 'c++', 'c#', 'go', 'rust', 'kotlin', 'swift',
+      'ruby', 'php', 'scala', 'dart', 'r', 'matlab', 'sql',
+    ],
+    frontend: [
+      'react', 'next.js', 'nextjs', 'vue', 'angular', 'svelte', 'redux', 'tailwind',
+      'css', 'html', 'sass', 'scss', 'webpack', 'vite', 'figma', 'storybook', 'material ui',
+      'chakra ui', 'bootstrap', 'jquery',
+    ],
+    backend: [
+      'node.js', 'nodejs', 'express', 'django', 'fastapi', 'flask', 'spring boot', 'rails',
+      'laravel', 'nestjs', 'graphql', 'rest api', 'grpc', 'kafka', 'rabbitmq', 'redis',
+    ],
+    database: [
+      'mongodb', 'postgresql', 'mysql', 'redis', 'elasticsearch', 'dynamodb', 'firebase',
+      'sqlite', 'cassandra', 'neo4j', 'snowflake', 'bigquery', 'prisma', 'sequelize',
+    ],
+    devops: [
+      'aws', 'gcp', 'azure', 'docker', 'kubernetes', 'terraform', 'ansible', 'jenkins',
+      'ci/cd', 'github actions', 'circleci', 'linux', 'nginx', 'bash',
+    ],
+    ml: [
+      'machine learning', 'deep learning', 'tensorflow', 'pytorch', 'pandas', 'numpy',
+      'scikit-learn', 'keras', 'opencv', 'nlp', 'computer vision', 'transformers',
+      'huggingface', 'langchain', 'llm', 'data analysis', 'matplotlib', 'seaborn',
+    ],
+    mobile: ['android', 'ios', 'flutter', 'react native', 'swift', 'kotlin', 'xamarin'],
+    tools: ['git', 'github', 'jira', 'confluence', 'figma', 'postman', 'docker', 'vscode'],
+  };
+
+  const allSkillKeywords = Object.values(SKILL_CATEGORIES).flat();
+  const extractedSkills = allSkillKeywords.filter((s) => lower.includes(s));
+
+  // Categorize skills
+  const skillsByCategory: Record<string, string[]> = {};
+  for (const [cat, list] of Object.entries(SKILL_CATEGORIES)) {
+    const found = list.filter((s) => extractedSkills.includes(s));
+    if (found.length > 0) skillsByCategory[cat] = found;
+  }
+  const categoryCount = Object.keys(skillsByCategory).length;
+
+  // ============================================================
+  // QUALITY SIGNALS (granular detection)
+  // ============================================================
+  const metricCount =
+    (text.match(/\d+%|\d+\s*(x|times)|\$\s*\d+|\d+\s*(ms|seconds|minutes|hours|days|GB|MB|KB)|\d+\s*(users|customers|requests|transactions|MAU|DAU|clients|students|engineers|requests\/sec|QPS|RPS)/gi) || []).length;
+  const hasQuantifiedMetrics = metricCount > 0;
+
+  const ACTION_VERBS = [
+    'built', 'designed', 'developed', 'architected', 'optimized', 'implemented', 'led',
+    'shipped', 'launched', 'created', 'engineered', 'automated', 'reduced', 'increased',
+    'improved', 'scaled', 'delivered', 'migrated', 'deployed', 'spearheaded', 'pioneered',
+    'orchestrated', 'streamlined', 'accelerated', 'modernized', 'refactored', 'mentored',
+    'collaborated', 'coordinated', 'managed', 'led', 'founded', 'initiated', 'authored',
   ];
-  const extractedSkills = skillKeywords.filter((s) => lower.includes(s));
-
-  // ---------- QUALITY SIGNALS ----------
-  const hasQuantifiedMetrics =
-    /\d+%/.test(text) ||                                      // percentages
-    /\d+\s*(x|times)/i.test(text) ||                          // multipliers
-    /\d+\s*(users|customers|requests|transactions|MAU|DAU|clients|students|engineers)/i.test(text) ||  // scale
-    /\$\s*\d+/.test(text) ||                                  // revenue
-    /\d+\s*(ms|seconds|minutes|hours|days)/i.test(text);      // performance
-  const hasActionVerbs = /\b(built|designed|developed|architected|optimized|implemented|led|shipped|launched|created|engineered|automated|reduced|increased|improved|scaled|delivered|migrated|built|deployed)\b/i.test(text);
-  const actionVerbCount = (text.match(/\b(built|designed|developed|architected|optimized|implemented|led|shipped|launched|created|engineered|automated|reduced|increased|improved|scaled|delivered|migrated|deployed)\b/gi) || []).length;
+  const actionVerbMatches = text.match(new RegExp(`\\b(${ACTION_VERBS.join('|')})\\b`, 'gi')) || [];
+  const actionVerbCount = actionVerbMatches.length;
+  const uniqueActionVerbs = new Set(actionVerbMatches.map((v) => v.toLowerCase())).size;
 
   // Penalize fluff words
-  const fluffWords = (lower.match(/\b(responsible for|duties included|work included|tasked with|worked on|helped with|involved in)\b/g) || []).length;
+  const FLUFF = [
+    'responsible for', 'duties included', 'work included', 'tasked with', 'worked on',
+    'helped with', 'involved in', 'assisted with', 'participated in',
+  ];
+  const fluffCount = FLUFF.reduce((sum, f) => sum + (lower.match(new RegExp(`\\b${f}\\b`, 'g')) || []).length, 0);
 
-  // ---------- STRICT SCORING ----------
-  // Maximum ~85 by default, achievable >85 only with quantified achievements + strong sections + ideal length
-  let score = 0;
+  // ============================================================
+  // STRICT SCORING (improved — more granular, ATS-aware)
+  // ============================================================
+  const sectionScores = {
+    contact: 0,
+    summary: 0,
+    education: 0,
+    experience: 0,
+    projects: 0,
+    skills: 0,
+    achievements: 0,
+    extracurriculars: 0,
+    links: 0,
+  };
 
-  // Sections (presence + quality)
-  if (hasContact) score += 4;
-  if (hasSummary) score += 5;
-  if (hasEducation) score += 8;
-  if (hasExperience) score += 12;
-  if (hasProjects) score += 14;          // heaviest weight — projects matter most
-  if (hasSkills) score += 8;
-  if (hasAchievements) score += 6;
-  if (hasExtracurriculars) score += 3;
-  if (extractedSkills.length >= 8) score += 4;
-  else if (extractedSkills.length >= 5) score += 2;
+  // Base section scores
+  if (hasContact) sectionScores.contact = 5;
+  if (hasLinks) sectionScores.links = 4; // separate from contact — LinkedIn/GitHub etc.
+  if (hasSummary) sectionScores.summary = 6;
+  if (hasEducation) sectionScores.education = 10;
+  if (hasExperience) sectionScores.experience = 12;
+  if (hasProjects) sectionScores.projects = 16; // heaviest weight
+  if (hasSkills) sectionScores.skills = 9;
+  if (hasAchievements || hasCertifications) sectionScores.achievements = 6;
+  if (hasExtracurriculars) sectionScores.extracurriculars = 3;
+
+  // Skills quality bonus
+  if (extractedSkills.length >= 12) sectionScores.skills += 4;
+  else if (extractedSkills.length >= 8) sectionScores.skills += 2;
+  else if (extractedSkills.length < 4) sectionScores.skills -= 3; // penalty for too few
+
+  // Cross-category breadth bonus (shows full-stack or diverse ability)
+  if (categoryCount >= 4) sectionScores.skills += 3;
+  else if (categoryCount >= 3) sectionScores.skills += 1;
+
+  let score = Object.values(sectionScores).reduce((s, v) => s + v, 0);
 
   // Quality bonuses
-  if (hasQuantifiedMetrics) score += 10;        // quantified achievements are huge
-  if (actionVerbCount >= 6) score += 6;          // strong action verbs
-  else if (actionVerbCount >= 3) score += 3;
-  if (!hasActionVerbs && hasExperience) score -= 4;
+  if (hasQuantifiedMetrics) score += Math.min(12, metricCount * 2); // 2 pts per metric, max 12
+  if (actionVerbCount >= 10) score += 8;
+  else if (actionVerbCount >= 6) score += 5;
+  else if (actionVerbCount >= 3) score += 2;
+  if (uniqueActionVerbs >= 5) score += 3; // vocabulary diversity
 
-  // Length scoring (sweet spot 250-550 words)
-  if (wordCount < 100) score -= 30;             // way too short → severe penalty
-  else if (wordCount < 180) score -= 15;        // too short
-  else if (wordCount < 250) score -= 5;         // slightly short
-  else if (wordCount > 700) score -= 8;         // too long
-  else if (wordCount > 900) score -= 15;        // way too long
+  // Length scoring (sweet spot 280-580 words for 1-page)
+  if (wordCount < 80) score -= 30;
+  else if (wordCount < 150) score -= 18;
+  else if (wordCount < 250) score -= 6;
+  else if (wordCount > 750) score -= 10;
+  else if (wordCount > 1000) score -= 18;
 
   // Fluff penalty
-  if (fluffWords >= 3) score -= 5;
+  if (fluffCount >= 5) score -= 6;
+  else if (fluffCount >= 3) score -= 3;
 
-  // Heavy penalty for missing critical sections
-  if (!hasProjects) score -= 10;
-  if (!hasExperience && !hasProjects) score -= 8;  // no proof of work
+  // Heavy penalties for missing critical sections
+  if (!hasProjects) score -= 12; // single biggest content gap
+  if (!hasExperience && !hasProjects) score -= 8;
+  if (!hasSkills && !hasProjects) score -= 4; // at least skills or project tech
 
-  // Cap
+  // Link bonuses (recruiters ACTUALLY click these)
+  if (hasPortfolio) score += 3;
+  if (hasLanguages) score += 1; // soft skill signal
+
   score = Math.max(5, Math.min(95, Math.round(score)));
 
-  // ATS score: more conservative
+  // ============================================================
+  // ATS SCORE (more granular — what parsers actually care about)
+  // ============================================================
   let atsScore = 0;
-  if (hasContact) atsScore += 12;
-  if (hasEducation) atsScore += 18;
-  if (hasExperience) atsScore += 18;
-  if (hasSkills) atsScore += 14;
-  if (extractedSkills.length >= 6) atsScore += 8;
-  else if (extractedSkills.length >= 3) atsScore += 4;
+  if (hasContact) atsScore += 10;
+  if (hasLinks) atsScore += 5;
+  if (hasSummary) atsScore += 8;
+  if (hasEducation) atsScore += 15;
+  if (hasExperience) atsScore += 15;
+  if (hasSkills) atsScore += 12;
+  if (extractedSkills.length >= 8) atsScore += 8;
+  else if (extractedSkills.length >= 5) atsScore += 5;
+  else if (extractedSkills.length < 3) atsScore -= 5;
+  // ATS format-friendliness
   if (lineCount <= 60 && wordCount >= 200 && wordCount <= 700) atsScore += 12;
-  else if (wordCount >= 150) atsScore += 6;
-  // Penalize ATS-incompatible patterns
-  if (wordCount > 1000) atsScore -= 10;
-  if (fluffWords >= 5) atsScore -= 5;
+  else if (wordCount >= 150 && wordCount <= 900) atsScore += 6;
+  // Penalties
+  if (wordCount > 1200) atsScore -= 12;
+  if (wordCount < 100) atsScore -= 15;
+  if (fluffCount >= 6) atsScore -= 6;
+  // ATS hates tables, columns, graphics — can't detect but can warn in suggestions
   atsScore = Math.max(0, Math.min(95, atsScore));
 
-  // ---------- STRENGTHS (only real ones) ----------
+  // ============================================================
+  // STRENGTHS (specific, with examples from the resume)
+  // ============================================================
   const strengths: string[] = [];
-  if (hasProjects && hasActionVerbs) strengths.push('Project descriptions use strong action verbs');
-  if (hasQuantifiedMetrics) strengths.push(`Includes quantified impact (${(text.match(/\d+%|\d+\s*(users|customers|requests|transactions|MAU|DAU)/gi) || []).length} metrics found)`);
-  if (extractedSkills.length >= 8) strengths.push(`Strong technical breadth: ${extractedSkills.length} relevant skills listed`);
-  if (hasAchievements) strengths.push('Includes achievements/certifications section');
-  if (hasExperience && hasSkills) strengths.push('Clear work experience with relevant tech stack');
-  if (actionVerbCount >= 5) strengths.push('Resume feels achievement-oriented, not just task-oriented');
-
-  // ---------- MISSING SECTIONS ----------
-  const missingSections: string[] = [];
-  if (!hasSummary) missingSections.push('Professional Summary');
-  if (!hasExperience) missingSections.push('Work Experience / Internships');
-  if (!hasProjects) missingSections.push('Projects (with descriptions)');
-  if (!hasSkills) missingSections.push('Dedicated Skills Section');
-  if (!hasAchievements) missingSections.push('Achievements / Certifications');
-  if (!hasExtracurriculars) missingSections.push('Extracurriculars / Leadership');
-  if (!hasQuantifiedMetrics) missingSections.push('Quantified metrics (%, $, scale)');
-
-  // ---------- WEAKNESSES (specific, critical) ----------
-  const weaknesses: string[] = [];
-  if (!hasProjects) weaknesses.push('CRITICAL: No projects section — recruiters expect 3-4 solid projects');
-  if (!hasQuantifiedMetrics) weaknesses.push('No quantified achievements. "Built X" becomes 10x stronger as "Built X serving 50K users, reducing load time by 40%"');
-  if (wordCount < 200) weaknesses.push(`Resume is too short (${wordCount} words). Aim for 350-550 words for a 1-page resume`);
-  if (wordCount > 800) weaknesses.push(`Resume is too long (${wordCount} words). Recruiters spend 6-10 seconds — cut to 1 page`);
-  if (extractedSkills.length < 5) weaknesses.push(`Only ${extractedSkills.length} technical skill detected. Add 8-12 for your target role`);
-  if (actionVerbCount < 3 && (hasExperience || hasProjects)) {
-    weaknesses.push('Action verbs are weak/missing. Replace "Responsible for" / "Worked on" with "Built", "Designed", "Optimized"');
+  if (hasProjects && actionVerbCount >= 3) {
+    const verbList = [...new Set(actionVerbMatches.map((v) => v.toLowerCase()))].slice(0, 3).join(', ');
+    strengths.push(`Project descriptions use strong action verbs (${verbList})`);
   }
-  if (fluffWords >= 3) weaknesses.push(`Contains ${fluffWords} generic phrases like "responsible for" — these hurt your resume`);
-  if (!hasAchievements) weaknesses.push('No achievements section. Add hackathon wins, certifications, scholarships');
-  if (missingSections.length >= 3) weaknesses.push(`Missing ${missingSections.length} standard sections`);
+  if (hasQuantifiedMetrics) {
+    const samples: string[] = [];
+    const percentMatch = text.match(/\d+%/g);
+    const scaleMatch = text.match(/\d+\s*(users|customers|requests|MAU|DAU|clients|students)/gi);
+    if (percentMatch) samples.push(`${percentMatch.length}% metrics`);
+    if (scaleMatch) samples.push(`${scaleMatch.length} scale indicators`);
+    strengths.push(
+      `Quantified impact: ${metricCount} metrics found${samples.length ? ' (' + samples.join(', ') + ')' : ''}`
+    );
+  }
+  if (extractedSkills.length >= 10) {
+    strengths.push(`Strong technical breadth: ${extractedSkills.length} skills across ${categoryCount} categories`);
+  } else if (extractedSkills.length >= 6) {
+    strengths.push(`Solid skill set: ${extractedSkills.length} relevant technical skills listed`);
+  }
+  if (hasAchievements) {
+    const achMatch = text.match(/(award|achievement|won|winner|ranked|top\s*\d)[^.]{0,60}/gi);
+    if (achMatch && achMatch.length > 0) {
+      strengths.push(`Includes ${achMatch.length} achievements/certifications`);
+    }
+  }
+  if (hasExperience && hasSkills) {
+    strengths.push('Clear work experience with relevant tech stack alignment');
+  }
+  if (hasPortfolio) {
+    strengths.push('Portfolio/GitHub/demo links included (recruiters verify these)');
+  }
+  if (uniqueActionVerbs >= 6) {
+    strengths.push(`Diverse action verb vocabulary (${uniqueActionVerbs} unique verbs used)`);
+  }
+  if (categoryCount >= 4) {
+    strengths.push(`Multi-domain expertise across ${categoryCount} areas (full-stack signal)`);
+  }
 
-  // ---------- SUGGESTIONS (actionable, in order of impact) ----------
+  // ============================================================
+  // MISSING SECTIONS
+  // ============================================================
+  const missingSections: string[] = [];
+  if (!hasSummary) missingSections.push('Professional Summary (2-3 lines at top)');
+  if (!hasExperience) missingSections.push('Work Experience / Internships');
+  if (!hasProjects) missingSections.push('Projects (with descriptions + tech stack)');
+  if (!hasSkills) missingSections.push('Dedicated Skills Section (categorized)');
+  if (!hasAchievements) missingSections.push('Achievements / Awards / Certifications');
+  if (!hasExtracurriculars) missingSections.push('Extracurriculars / Leadership');
+  if (!hasQuantifiedMetrics) missingSections.push('Quantified impact metrics (%, scale, time)');
+  if (!hasLinks) missingSections.push('Live links (LinkedIn, GitHub, portfolio)');
+  if (extractedSkills.length < 6) missingSections.push(`More technical skills (only ${extractedSkills.length} detected)`);
+
+  // ============================================================
+  // WEAKNESSES (specific, actionable, with examples)
+  // ============================================================
+  const weaknesses: string[] = [];
+  if (!hasProjects) {
+    weaknesses.push('CRITICAL: No projects section. Recruiters expect 3-4 solid projects with tech stack + impact.');
+  }
+  if (!hasQuantifiedMetrics) {
+    weaknesses.push('Zero quantified achievements. Example: "Built API" → "Built REST API serving 50K requests/day, reducing p99 latency by 40%".');
+  } else if (metricCount < 3 && hasExperience) {
+    weaknesses.push(`Only ${metricCount} metric(s) — aim for 8-12 across projects and experience.`);
+  }
+  if (wordCount < 200) {
+    weaknesses.push(`Resume is too short (${wordCount} words). Target 350-550 words for a 1-page student resume.`);
+  } else if (wordCount > 800) {
+    weaknesses.push(`Resume is too long (${wordCount} words). Recruiters spend 6-10 seconds. Cut to 1 page (under 600 words).`);
+  }
+  if (extractedSkills.length < 5) {
+    weaknesses.push(`Only ${extractedSkills.length} technical skill detected. Add 8-12 — too few = weak signal.`);
+  } else if (extractedSkills.length < 8) {
+    weaknesses.push(`${extractedSkills.length} skills is okay but 10-12 is the sweet spot for your target role.`);
+  }
+  if (actionVerbCount < 3 && (hasExperience || hasProjects)) {
+    weaknesses.push(`Only ${actionVerbCount} action verb(s) found. Use "Built", "Designed", "Optimized", "Scaled", "Led" — not "Worked on" / "Responsible for".`);
+  }
+  if (fluffCount >= 3) {
+    const examples = FLUFF.filter((f) => lower.includes(f)).slice(0, 2);
+    weaknesses.push(`Contains ${fluffCount} generic phrases${examples.length ? ' like "' + examples.join('", "') + '"' : ''} — replace with concrete impact.`);
+  }
+  if (!hasAchievements && !hasCertifications) {
+    weaknesses.push('No achievements or certifications listed. Add hackathon wins, scholarships, online certs (AWS, Google), CGPA if 8+.');
+  }
+  if (!hasLinks) {
+    weaknesses.push('No LinkedIn/GitHub links. Recruiters Google you — make it easy.');
+  }
+  if (categoryCount < 2 && extractedSkills.length > 0) {
+    weaknesses.push(`Skills are all in one category (${Object.keys(skillsByCategory)[0] || 'unknown'}). Show breadth — add a DB, framework, or DevOps tool.`);
+  }
+  if (missingSections.length >= 4) {
+    weaknesses.push(`${missingSections.length} standard sections missing — that's a major ATS compatibility issue.`);
+  }
+
+  // ============================================================
+  // SUGGESTIONS (ordered by impact, role-aware)
+  // ============================================================
   const suggestions: string[] = [
-    'Add 2-3 quantified bullets per project/role. Numbers are the single biggest score booster.',
-    'Start every bullet with a strong action verb: "Built", "Designed", "Optimized", "Scaled", "Led"',
-    'Cut phrases like "Responsible for", "Worked on", "Duties included" — they signal junior-level work.',
-    'Tailor your Skills section to ONE target role. Frontend roles = React, TypeScript, Tailwind at the top.',
-    'Add live links: GitHub repo, deployed demo (Vercel/Netlify), LinkedIn. Recruiters actually click these.',
-    'Keep resume to 1 page if you have <2 years of experience. Most students have 1.5+ pages — cut ruthlessly.',
-    'Add a 2-3 line professional summary at the top. Mention role + 1 superpower + 1 measurable win.',
+    'Add 2-3 quantified bullets per project/role. Numbers are the single biggest score booster ("reduced load time by 40%" > "made it faster").',
+    'Start every bullet with a strong action verb. Replace "Responsible for" / "Worked on" with "Built", "Designed", "Optimized", "Scaled", "Led".',
+    'Tailor your Skills section to ONE target role. Frontend = React/TypeScript/Tailwind at top. Backend = Python/Node/PostgreSQL at top.',
+    'Add live links: GitHub repo, deployed demo (Vercel/Netlify), LinkedIn profile. Recruiters actually click these.',
+    'Use the "XYZ" formula: "Accomplished [X], as measured by [Y], by doing [Z]". Forces quantification + impact.',
+    'Keep resume to 1 page if you have <2 years experience. Cut projects older than 2 years, keep only 3-4 best.',
+    'Add a 2-3 line Professional Summary at top: "[Role] with [X years/strength] who [achievement]. Seeking [target]."',
   ];
 
-  // ---------- EDUCATION DETECTION ----------
+  // Role-specific suggestions
+  if (extractedSkills.includes('react') || extractedSkills.includes('next.js')) {
+    suggestions.push('Frontend-specific: add SSR/SSG knowledge, performance optimization, accessibility (a11y), and a portfolio link.');
+  }
+  if (extractedSkills.includes('python') || extractedSkills.includes('tensorflow')) {
+    suggestions.push('ML-specific: include dataset size, model accuracy, business impact. Recruiters want numbers — "99% accuracy on 10K samples" > "built an ML model".');
+  }
+  if (extractedSkills.includes('aws') || extractedSkills.includes('docker')) {
+    suggestions.push('DevOps-specific: list services used (EC2/S3/Lambda for AWS), CI/CD tools, infrastructure-as-code projects.');
+  }
+
+  // ============================================================
+  // EDUCATION DETECTION
+  // ============================================================
   let educationLevel: ResumeAnalysis['educationLevel'] = 'Other';
-  if (/b\.?\s?tech|btech/i.test(text)) educationLevel = 'BTech';
-  else if (/m\.?\s?tech|mtech/i.test(text)) educationLevel = 'MTech';
-  else if (/\bmca\b/i.test(text)) educationLevel = 'MCA';
-  else if (/\bbca\b/i.test(text)) educationLevel = 'BCA';
+  if (/b\.?\s?tech|btech|bachelor\s*of\s*technology/i.test(text)) educationLevel = 'BTech';
+  else if (/m\.?\s?tech|mtech|master\s*of\s*technology/i.test(text)) educationLevel = 'MTech';
+  else if (/\bmca\b|master\s*of\s*computer/i.test(text)) educationLevel = 'MCA';
+  else if (/\bbca\b|bachelor\s*of\s*computer/i.test(text)) educationLevel = 'BCA';
   else if (/diploma/i.test(text)) educationLevel = 'Diploma';
 
   const yearMatches = text.match(/20\d{2}/g) || [];
   const experienceYears = yearMatches.length > 0 ? Math.min(3, yearMatches.length - 1) : 0;
 
-  // ---------- RECOMMENDED ROLES ----------
+  // ============================================================
+  // RECOMMENDED ROLES (skill-based matching)
+  // ============================================================
   const recommendedRoles: string[] = [];
   const skillSet = new Set(extractedSkills);
-  if ([...skillSet].some((s) => ['react', 'next.js', 'nextjs', 'tailwind', 'typescript'].includes(s)))
-    recommendedRoles.push('Frontend Developer Intern');
-  if ([...skillSet].some((s) => ['node', 'node.js', 'nodejs', 'express', 'mongodb', 'postgresql', 'fastapi', 'django'].includes(s)))
-    recommendedRoles.push('Full Stack Developer Intern');
-  if ([...skillSet].some((s) => ['python', 'machine learning', 'ml', 'tensorflow', 'pytorch', 'pandas'].includes(s)))
-    recommendedRoles.push('ML Engineer Intern');
-  if ([...skillSet].some((s) => ['java', 'spring', 'spring boot'].includes(s)))
-    recommendedRoles.push('Backend Developer Intern');
-  if ([...skillSet].some((s) => ['figma'].includes(s))) recommendedRoles.push('UI/UX Designer Intern');
+  if ([...skillSet].some((s) => ['react', 'next.js', 'nextjs', 'tailwind', 'typescript', 'vue', 'angular'].includes(s)))
+    recommendedRoles.push('Frontend Developer');
+  if ([...skillSet].some((s) => ['node.js', 'nodejs', 'express', 'mongodb', 'postgresql', 'fastapi', 'django', 'spring boot', 'flask'].includes(s)))
+    recommendedRoles.push('Full Stack Developer');
+  if ([...skillSet].some((s) => ['python', 'machine learning', 'tensorflow', 'pytorch', 'pandas', 'numpy', 'scikit-learn', 'nlp', 'llm'].includes(s)))
+    recommendedRoles.push('ML Engineer');
+  if ([...skillSet].some((s) => ['java', 'spring', 'spring boot', 'kafka'].includes(s)))
+    recommendedRoles.push('Backend Developer');
+  if ([...skillSet].some((s) => ['figma', 'storybook'].includes(s))) recommendedRoles.push('UI/UX Designer');
   if ([...skillSet].some((s) => ['flutter', 'react native', 'android', 'kotlin', 'swift', 'ios'].includes(s)))
-    recommendedRoles.push('Mobile Developer Intern');
+    recommendedRoles.push('Mobile Developer');
+  if ([...skillSet].some((s) => ['aws', 'docker', 'kubernetes', 'terraform', 'jenkins', 'ci/cd'].includes(s)))
+    recommendedRoles.push('DevOps Engineer');
+  if ([...skillSet].some((s) => ['aws', 'gcp', 'azure'].includes(s)) && recommendedRoles.length === 0)
+    recommendedRoles.push('Cloud Engineer');
   if (recommendedRoles.length === 0) {
-    recommendedRoles.push('Software Developer Intern');
+    recommendedRoles.push('Software Developer');
     recommendedRoles.push('Technical Intern');
   }
 
   return {
     score,
     atsScore,
-    strengths: strengths.slice(0, 4),
-    weaknesses: weaknesses.slice(0, 5),
-    missingSections: missingSections.slice(0, 6),
-    suggestions: suggestions.slice(0, 7),
+    strengths: strengths.slice(0, 5),
+    weaknesses: weaknesses.slice(0, 6),
+    missingSections: missingSections.slice(0, 7),
+    suggestions: suggestions.slice(0, 8),
     extractedSkills,
     experienceYears,
     educationLevel,

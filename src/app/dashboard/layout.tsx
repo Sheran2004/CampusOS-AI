@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { storage } from '@/lib/storage';
 import { calculatePlacementReadiness } from '@/lib/ai';
-import { Sparkles, LayoutDashboard, FileText, Target, MessageSquare, Briefcase, TrendingUp, LogOut, Settings, Trophy, Users, Briefcase as Portfolio, Github, Crown, BookOpen, BriefcaseBusiness } from 'lucide-react';
+import { Sparkles, LayoutDashboard, FileText, Target, MessageSquare, Briefcase, TrendingUp, LogOut, Settings, Trophy, Users, Briefcase as Portfolio, Github, Crown, BookOpen, BriefcaseBusiness, Pen } from 'lucide-react';
 import { LogoutButton } from './logout-button';
 import { DashboardSidebarLink } from './dashboard-sidebar-link';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -40,7 +40,8 @@ export default async function DashboardLayout({
 
   const nav = [
     { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
-    { href: '/dashboard/resume', icon: FileText, label: 'Resume' },
+    { href: '/dashboard/resume', icon: FileText, label: 'Resume Analyzer' },
+    { href: '/dashboard/resume-builder', icon: Pen, label: 'Resume Builder' },
     { href: '/dashboard/skills', icon: Target, label: 'Skill Gap' },
     { href: '/dashboard/interviews', icon: MessageSquare, label: 'Mock Interview' },
     { href: '/dashboard/jobs', icon: Briefcase, label: 'Jobs' },

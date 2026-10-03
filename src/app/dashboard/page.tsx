@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { FileText, Target, MessageSquare, Briefcase, TrendingUp, ArrowRight, Sparkles, CheckCircle2, Trophy, Users, Github, BookOpen, Crown } from 'lucide-react';
+import { FileText, Target, MessageSquare, Briefcase, TrendingUp, ArrowRight, Sparkles, CheckCircle2, Trophy, Users, Github, BookOpen, Crown, Pen } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import type { InterviewSession } from '@/lib/types';
 
@@ -150,6 +150,17 @@ export default async function DashboardPage() {
 
         {/* Quick links to other features */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-6">
+          <Link href="/dashboard/resume-builder">
+            <Card className="hover:border-violet-500 transition cursor-pointer">
+              <CardContent className="pt-6 flex items-center gap-3">
+                <Pen className="h-5 w-5 text-violet-500" />
+                <div>
+                  <div className="font-semibold text-sm">Resume Builder</div>
+                  <div className="text-xs text-muted-foreground">Build + tailor to company</div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
           <Link href="/dashboard/hackathons">
             <Card className="hover:border-yellow-500 transition cursor-pointer">
               <CardContent className="pt-6 flex items-center gap-3">

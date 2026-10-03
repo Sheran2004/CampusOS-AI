@@ -38,6 +38,7 @@ model User {
   sentMessages      ChatMessage[] @relation("SentMessages")
   notifications     Notification[]
   payments           Payment[]
+  savedResumes       SavedResume[]
 }
 
 model Resume {
@@ -174,4 +175,19 @@ model Payment {
   paidAt        DateTime?
 
   @@index([userId, status])
+}
+
+model SavedResume {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String   @default("My Resume")
+  dataJson     String   // full resume structured data
+  targetCompany String? // e.g. "Google", "Razorpay"
+  targetRole   String?  // e.g. "SDE Intern"
+  tailoredScore Int     @default(0) // 0-100 match against target
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId, updatedAt])
 }
